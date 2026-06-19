@@ -1,0 +1,155 @@
+{
+  "info": {
+    "name": "Predictive Maintenance Platform — Acceptance API Collection",
+    "_postman_id": "pm-acceptance-collection-0001",
+    "description": "Acceptance/integration test collection. Set {{base_url}} (default http://localhost:8000). Run 'Auth > Login' first to populate {{token}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "token", "value": "" },
+    { "key": "machine_id", "value": "" },
+    { "key": "sensor_id", "value": "" },
+    { "key": "alarm_id", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "System Health",
+      "item": [
+        { "name": "Liveness", "request": { "method": "GET", "url": "{{base_url}}/health/live", "auth": { "type": "noauth" } } },
+        { "name": "Readiness", "request": { "method": "GET", "url": "{{base_url}}/health/ready", "auth": { "type": "noauth" } } },
+        { "name": "Status rollup", "request": { "method": "GET", "url": "{{base_url}}/status", "auth": { "type": "noauth" } } },
+        { "name": "Metrics (Prometheus)", "request": { "method": "GET", "url": "{{base_url}}/metrics", "auth": { "type": "noauth" } } }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (sets {{token}})",
+          "event": [
+            { "listen": "test", "script": { "exec": [
+              "var j = pm.response.json();",
+              "if (j.access_token) { pm.collectionVariables.set('token', j.access_token); }",
+              "pm.test('got token', function(){ pm.expect(j.access_token).to.be.a('string'); });"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "username", "value": "admin@example.com" },
+              { "key": "password", "value": "admin123" }
+            ] },
+            "url": "{{base_url}}/users/login"
+          }
+        },
+        { "name": "Current user", "request": { "method": "GET", "url": "{{base_url}}/users/me" } }
+      ]
+    },
+    {
+      "name": "Machines",
+      "item": [
+        {
+          "name": "Create machine (engineer+)",
+          "event": [ { "listen": "test", "script": { "exec": [
+            "var j = pm.response.json(); if (j.id) pm.collectionVariables.set('machine_id', j.id);",
+            "pm.test('201', ()=> pm.response.to.have.status(201));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pump-API-Test\",\n  \"location\": \"Plant A\",\n  \"description\": \"Created by Postman\",\n  \"status\": \"online\",\n  \"criticality\": \"high\"\n}" },
+            "url": "{{base_url}}/machines"
+          }
+        },
+        { "name": "List machines", "request": { "method": "GET", "url": "{{base_url}}/machines" } },
+        { "name": "Get machine", "request": { "method": "GET", "url": "{{base_url}}/machines/{{machine_id}}" } },
+        { "name": "Deactivate machine", "request": { "method": "POST", "url": "{{base_url}}/machines/{{machine_id}}/deactivate" } },
+        { "name": "Activate machine", "request": { "method": "POST", "url": "{{base_url}}/machines/{{machine_id}}/activate" } },
+        { "name": "Machine summary", "request": { "method": "GET", "url": "{{base_url}}/machines/{{machine_id}}/summary" } }
+      ]
+    },
+    {
+      "name": "Sensors",
+      "item": [
+        {
+          "name": "Create sensor (engineer+)",
+          "event": [ { "listen": "test", "script": { "exec": [
+            "var j = pm.response.json(); if (j.id) pm.collectionVariables.set('sensor_id', j.id);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"machine_id\": \"{{machine_id}}\",\n  \"name\": \"motor_current\",\n  \"sensor_type\": \"current\",\n  \"unit\": \"A\",\n  \"warning_threshold\": 70,\n  \"critical_threshold\": 90\n}" },
+            "url": "{{base_url}}/sensors"
+          }
+        },
+        { "name": "List sensors", "request": { "method": "GET", "url": "{{base_url}}/sensors?machine_id={{machine_id}}" } },
+        { "name": "Sensor health", "request": { "method": "GET", "url": "{{base_url}}/sensors/{{sensor_id}}/health" } },
+        { "name": "Deactivate sensor", "request": { "method": "POST", "url": "{{base_url}}/sensors/{{sensor_id}}/deactivate" } },
+        { "name": "Activate sensor", "request": { "method": "POST", "url": "{{base_url}}/sensors/{{sensor_id}}/activate" } }
+      ]
+    },
+    {
+      "name": "Alarms & Tickets",
+      "item": [
+        { "name": "List alarms", "request": { "method": "GET", "url": "{{base_url}}/alarms" } },
+        { "name": "Resolve alarm", "request": { "method": "POST", "url": "{{base_url}}/alarms/{{alarm_id}}/resolve?resolution_notes=Verified" } },
+        { "name": "List tickets", "request": { "method": "GET", "url": "{{base_url}}/tickets" } }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        { "name": "AI status", "request": { "method": "GET", "url": "{{base_url}}/ai/status" } },
+        { "name": "List model versions", "request": { "method": "GET", "url": "{{base_url}}/ai/models" } },
+        { "name": "Retrain (admin)", "request": { "method": "POST", "url": "{{base_url}}/ai/retrain" } }
+      ]
+    },
+    {
+      "name": "OPC UA",
+      "item": [
+        { "name": "Status", "request": { "method": "GET", "url": "{{base_url}}/opcua/status" } },
+        {
+          "name": "Test connection",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Line-1 OPC UA\",\n  \"endpoint_url\": \"opc.tcp://localhost:4840\",\n  \"nodes\": [\n    {\"node_id\": \"ns=2;s=Motor.Current\", \"alias\": \"motor_current\", \"unit\": \"A\"}\n  ]\n}" },
+            "url": "{{base_url}}/opcua/test"
+          }
+        },
+        {
+          "name": "Activate source (engineer+, persisted)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Line-1 OPC UA\",\n  \"endpoint_url\": \"opc.tcp://localhost:4840\",\n  \"nodes\": [\n    {\"node_id\": \"ns=2;s=Motor.Current\", \"alias\": \"motor_current\", \"unit\": \"A\", \"category\": \"electrical\"}\n  ]\n}" },
+            "url": "{{base_url}}/opcua/activate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        { "name": "Summary (predictions + alarms)", "request": { "method": "GET", "url": "{{base_url}}/reports/summary" } },
+        {
+          "name": "Generate CSV report",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"format\": \"csv\"\n}" },
+            "url": "{{base_url}}/reports/generate"
+          }
+        }
+      ]
+    }
+  ]
+}
